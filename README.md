@@ -1,161 +1,294 @@
 # xAI MCP Server
 
-A Model Context Protocol (MCP) server for xAI's Grok APIs. Use this server to access Grok's capabilities directly from Claude Code.
+A Model Context Protocol (MCP) server that brings xAI's Grok APIs to Claude Code. Generate images, chat with Grok, analyze images, search the web, and create videos—all from natural language prompts in your Claude Code session.
 
 ## Features
 
-- **Image Generation** - Generate images from text prompts using Grok Imagine
-- **Chat** - Converse with Grok models (grok-3, grok-4, etc.)
-- **Vision** - Analyze and describe images
-- **Live Search** - Real-time web, news, and X/Twitter search
-- **Video Generation** - Generate videos from text prompts
+| Tool | Description |
+|------|-------------|
+| `generate_image` | Generate images using Grok Imagine |
+| `chat` | Chat with Grok models (grok-3, grok-4, grok-3-mini) |
+| `analyze_image` | Analyze and describe images with Grok Vision |
+| `live_search` | Real-time web, news, and X/Twitter search |
+| `generate_video` | Generate videos from text prompts |
+
+## Prerequisites
+
+- **Node.js** 18.0.0 or higher
+- **xAI API Key** from [x.ai/api](https://x.ai/api)
+- **Claude Code** installed
 
 ## Installation
 
+### Option 1: Clone and Build
+
 ```bash
-# Clone and install
-cd xai-for-agents
+# Clone the repository
+git clone https://github.com/joemccann/xai-mcp-server.git
+cd xai-mcp-server
+
+# Install dependencies
 npm install
+
+# Build
 npm run build
 ```
 
-## Configuration
-
-### 1. Set your xAI API Key
-
-Get your API key from [x.ai](https://x.ai/api).
+### Option 2: Install from npm (coming soon)
 
 ```bash
-export XAI_API_KEY="your-api-key-here"
+npm install -g xai-mcp-server
 ```
 
-### 2. Configure Claude Code
+## Configuration for Claude Code
 
-Add to your `~/.claude/settings.json`:
+### Step 1: Get Your xAI API Key
+
+1. Go to [x.ai/api](https://x.ai/api)
+2. Sign up or log in
+3. Create an API key
+4. Copy the key (starts with `xai-`)
+
+### Step 2: Configure Claude Code
+
+Add the MCP server to your Claude Code settings file:
+
+**Location:** `~/.claude/settings.json`
 
 ```json
 {
   "mcpServers": {
     "xai": {
       "command": "node",
-      "args": ["/path/to/xai-for-agents/dist/index.js"],
+      "args": ["/absolute/path/to/xai-mcp-server/dist/index.js"],
       "env": {
-        "XAI_API_KEY": "your-api-key-here"
+        "XAI_API_KEY": "xai-your-api-key-here"
       }
     }
   }
 }
 ```
 
-Replace `/path/to/xai-for-agents` with the actual path to this directory.
+> **Important:** Replace `/absolute/path/to/xai-mcp-server` with the actual path where you cloned the repository.
 
-## Usage Examples
+### Step 3: Restart Claude Code
 
-Once configured, you can use these tools in Claude Code:
+Restart Claude Code to load the new MCP server. You should see the xAI tools available.
 
-### Generate an Image
+## Usage
+
+Once configured, you can use natural language to invoke xAI capabilities:
+
+### Image Generation
 
 ```
-"Using grok imagine, generate an image of a cat in a tree."
+Generate an image of a cyberpunk cityscape at night with neon lights.
 ```
 
-Claude will invoke the `generate_image` tool and return the image URL.
+```
+Using grok imagine, create a watercolor painting of a mountain landscape.
+```
+
+```
+Generate 3 variations of a logo for a coffee shop called "Bean There".
+```
 
 ### Chat with Grok
 
 ```
-"Ask Grok to explain quantum computing."
+Ask Grok to explain the theory of relativity in simple terms.
 ```
 
-### Analyze an Image
-
 ```
-"Analyze this image: https://example.com/image.jpg"
+Have Grok write a haiku about programming.
 ```
 
-### Search the Web
+### Image Analysis
 
 ```
-"Search for the latest news about AI."
+Analyze this image and describe what you see: https://example.com/photo.jpg
 ```
 
-### Generate a Video
-
 ```
-"Generate a 5-second video of a sunset over mountains."
+What text is visible in this screenshot: [image URL]
 ```
 
-## Available Tools
+### Live Search
 
-| Tool | Description |
-|------|-------------|
-| `generate_image` | Generate images from text prompts |
-| `chat` | Chat with Grok models |
-| `analyze_image` | Analyze images using Grok vision |
-| `live_search` | Search web, news, or X |
-| `generate_video` | Generate videos from prompts |
+```
+Search for the latest news about SpaceX launches.
+```
 
-## Tool Parameters
+```
+Find recent tweets about the new iPhone release.
+```
+
+```
+Search the web for Python best practices 2024.
+```
+
+### Video Generation
+
+```
+Generate a 5-second video of clouds moving across a blue sky.
+```
+
+```
+Create a video animation of a bouncing ball.
+```
+
+## Tool Reference
 
 ### generate_image
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `prompt` | string | Yes | Text description of the image |
-| `n` | number | No | Number of images (1-10, default: 1) |
-| `model` | string | No | Model (default: grok-2-image) |
-| `aspect_ratio` | string | No | e.g., "16:9", "1:1" |
-| `response_format` | string | No | "url" or "b64_json" |
+Generate images from text descriptions using Grok Imagine.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `prompt` | string | Yes | - | Text description of the image |
+| `n` | number | No | 1 | Number of images (1-10) |
+| `model` | string | No | `grok-2-image` | Image generation model |
+| `aspect_ratio` | string | No | - | Aspect ratio (e.g., "16:9", "1:1", "4:3") |
+| `response_format` | string | No | `url` | Output format: "url" or "b64_json" |
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "images": [
+    {
+      "index": 1,
+      "url": "https://api.x.ai/images/generated/abc123.png",
+      "revised_prompt": "A detailed cyberpunk cityscape..."
+    }
+  ]
+}
+```
 
 ### chat
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `message` | string | Yes | Message to send to Grok |
-| `model` | string | No | Model (default: grok-3) |
-| `system_prompt` | string | No | System context |
-| `temperature` | number | No | 0-2, default: 0.7 |
-| `max_tokens` | number | No | Max response tokens |
+Chat with Grok language models.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `message` | string | Yes | - | Message to send to Grok |
+| `model` | string | No | `grok-3` | Model: grok-3, grok-4, grok-3-mini |
+| `system_prompt` | string | No | - | System context/instructions |
+| `temperature` | number | No | 0.7 | Sampling temperature (0-2) |
+| `max_tokens` | number | No | - | Maximum response tokens |
 
 ### analyze_image
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `image_url` | string | Yes | URL or base64 data URL |
-| `prompt` | string | No | Question about the image |
-| `detail` | string | No | "low", "high", or "auto" |
+Analyze images using Grok's vision capabilities.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `image_url` | string | Yes | - | Image URL or base64 data URL |
+| `prompt` | string | No | "Describe this image" | Question or instruction |
+| `detail` | string | No | `auto` | Detail level: "low", "high", "auto" |
+| `model` | string | No | `grok-2-vision-1212` | Vision model |
 
 ### live_search
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `query` | string | Yes | Search query |
-| `sources` | array | No | ["web", "news", "x"] |
-| `date_range` | object | No | { start, end } dates |
-| `max_results` | number | No | Max results (1-20) |
+Perform real-time web searches using Grok.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `query` | string | Yes | - | Search query |
+| `sources` | array | No | `["web"]` | Sources: "web", "news", "x" |
+| `date_range` | object | No | - | Date filter: `{ start, end }` (YYYY-MM-DD) |
+| `max_results` | number | No | 10 | Maximum results (1-20) |
 
 ### generate_video
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `prompt` | string | Yes | Video description |
-| `duration` | number | No | Seconds (1-15) |
-| `image` | string | No | Input image to animate |
-| `aspect_ratio` | string | No | e.g., "16:9" |
+Generate videos from text descriptions.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `prompt` | string | Yes | - | Video description |
+| `model` | string | No | `grok-2-video` | Video generation model |
+| `duration` | number | No | 5 | Duration in seconds (1-15) |
+| `image` | string | No | - | Input image URL to animate |
+| `video` | string | No | - | Input video URL to edit |
+| `aspect_ratio` | string | No | - | Aspect ratio (e.g., "16:9") |
+| `wait_for_completion` | boolean | No | true | Wait for video to finish |
 
 ## Development
 
 ```bash
-# Watch mode
-npm run dev
+# Install dependencies
+npm install
 
-# Build
+# Build TypeScript
 npm run build
 
-# Run directly
+# Watch mode (rebuild on changes)
+npm run dev
+
+# Run the server directly
 npm start
 ```
+
+### Project Structure
+
+```
+xai-mcp-server/
+├── src/
+│   ├── index.ts           # MCP server entry point
+│   ├── xai-client.ts      # xAI API client with types
+│   └── tools/
+│       ├── generate-image.ts
+│       ├── chat.ts
+│       ├── vision.ts
+│       ├── live-search.ts
+│       └── generate-video.ts
+├── dist/                  # Compiled JavaScript
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+## Troubleshooting
+
+### "XAI_API_KEY environment variable is required"
+
+Ensure your `~/.claude/settings.json` includes the `env` block with your API key:
+
+```json
+"env": {
+  "XAI_API_KEY": "xai-your-key-here"
+}
+```
+
+### Tools not appearing in Claude Code
+
+1. Verify the path in `args` is absolute and correct
+2. Ensure the project is built (`npm run build`)
+3. Restart Claude Code completely
+4. Check Claude Code logs for MCP connection errors
+
+### API errors
+
+- Verify your API key is valid at [x.ai](https://x.ai)
+- Check you have sufficient API credits
+- Some features may require specific API tier access
+
+## API Reference
+
+This server uses the xAI API. For full API documentation, see:
+- [xAI API Reference](https://docs.x.ai/docs/api-reference)
+- [Image Generation Guide](https://docs.x.ai/docs/guides/image-generation)
 
 ## License
 
 MIT
+
+## Contributing
+
+Contributions welcome! Please open an issue or submit a pull request.
+
+## Acknowledgments
+
+- [xAI](https://x.ai) for the Grok API
+- [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
+- [Anthropic](https://anthropic.com) for Claude Code
