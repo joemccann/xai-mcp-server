@@ -20,24 +20,34 @@ A Model Context Protocol (MCP) server that brings xAI's Grok APIs to Claude Code
 
 ## Installation
 
-### Option 1: Clone and Build
+### Option 1: Quick Install (Recommended)
 
 ```bash
-# Clone the repository
-git clone https://github.com/joemccann/xai-mcp-server.git
-cd xai-mcp-server
-
-# Install dependencies
-npm install
-
-# Build
-npm run build
+curl -fsSL https://raw.githubusercontent.com/joemccann/xai-mcp-server/main/install.sh | bash
 ```
 
-### Option 2: Install from npm (coming soon)
+This installs the server and automatically configures Claude Code. You'll be prompted for your xAI API key.
+
+### Option 2: npx from GitHub
+
+No installation needed - runs directly from GitHub:
+
+```bash
+npx github:joemccann/xai-mcp-server
+```
+
+### Option 3: npm Global Install
 
 ```bash
 npm install -g xai-mcp-server
+```
+
+### Option 4: Clone and Build
+
+```bash
+git clone https://github.com/joemccann/xai-mcp-server.git
+cd xai-mcp-server
+npm install
 ```
 
 ## Configuration for Claude Code
@@ -51,16 +61,20 @@ npm install -g xai-mcp-server
 
 ### Step 2: Configure Claude Code
 
+> **Note:** If you used the Quick Install (Option 1), this is already done for you.
+
 Add the MCP server to your Claude Code settings file:
 
 **Location:** `~/.claude/settings.json`
+
+**Using npx (no install needed):**
 
 ```json
 {
   "mcpServers": {
     "xai": {
-      "command": "node",
-      "args": ["/absolute/path/to/xai-mcp-server/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "github:joemccann/xai-mcp-server"],
       "env": {
         "XAI_API_KEY": "xai-your-api-key-here"
       }
@@ -69,7 +83,36 @@ Add the MCP server to your Claude Code settings file:
 }
 ```
 
-> **Important:** Replace `/absolute/path/to/xai-mcp-server` with the actual path where you cloned the repository.
+**If installed via npm:**
+
+```json
+{
+  "mcpServers": {
+    "xai": {
+      "command": "xai-mcp-server",
+      "env": {
+        "XAI_API_KEY": "xai-your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+**If cloned/installed locally:**
+
+```json
+{
+  "mcpServers": {
+    "xai": {
+      "command": "node",
+      "args": ["~/.xai-mcp-server/dist/index.js"],
+      "env": {
+        "XAI_API_KEY": "xai-your-api-key-here"
+      }
+    }
+  }
+}
+```
 
 ### Step 3: Restart Claude Code
 
