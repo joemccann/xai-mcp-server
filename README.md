@@ -63,9 +63,9 @@ npm install
 
 > **Note:** If you used the Quick Install (Option 1), this is already done for you.
 
-Add the MCP server to your Claude Code settings file:
+Add the MCP server to your Claude Code MCP config file:
 
-**Location:** `~/.claude/settings.json`
+**Location:** `~/.claude/mcp.json`
 
 **Using npx (no install needed):**
 
@@ -295,7 +295,7 @@ xai-mcp-server/
 
 ### "XAI_API_KEY environment variable is required"
 
-Ensure your `~/.claude/settings.json` includes the `env` block with your API key:
+Ensure your `~/.claude/mcp.json` includes the `env` block with your API key:
 
 ```json
 "env": {
@@ -305,10 +305,11 @@ Ensure your `~/.claude/settings.json` includes the `env` block with your API key
 
 ### Tools not appearing in Claude Code
 
-1. Verify the path in `args` is absolute and correct
-2. Ensure the project is built (`npm run build`)
-3. Restart Claude Code completely
-4. Check Claude Code logs for MCP connection errors
+1. Run `/mcp` in Claude Code to check server status
+2. Verify the path in `args` is absolute (use `which node` to get full node path)
+3. Ensure the project is built (`npm run build`)
+4. Restart Claude Code completely
+5. Check that `~/.claude/mcp.json` exists and has correct syntax
 
 ### API errors
 

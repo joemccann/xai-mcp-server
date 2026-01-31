@@ -6,7 +6,7 @@ set -e
 
 REPO="joemccann/xai-mcp-server"
 INSTALL_DIR="$HOME/.xai-mcp-server"
-SETTINGS_FILE="$HOME/.claude/settings.json"
+MCP_FILE="$HOME/.claude/mcp.json"
 
 # Colors
 RED='\033[0;31m'
@@ -34,7 +34,9 @@ if [ "$NODE_VERSION" -lt 18 ]; then
     exit 1
 fi
 
-echo -e "${GREEN}✓${NC} Node.js $(node -v) detected"
+# Get absolute path to node (important for nvm users)
+NODE_PATH=$(which node)
+echo -e "${GREEN}✓${NC} Node.js $(node -v) detected at $NODE_PATH"
 
 # Check for git
 if ! command -v git &> /dev/null; then
@@ -73,7 +75,7 @@ fi
 
 if [ -z "$API_KEY" ]; then
     API_KEY="xai-your-api-key-here"
-    echo -e "${YELLOW}⚠${NC}  Skipped. You'll need to add your API key to ~/.claude/settings.json"
+    echo -e "${YELLOW}⚠${NC}  Skipped. You'll need to add your API key to ~/.claude/mcp.json"
 fi
 
 # Configure Claude Code
@@ -82,33 +84,33 @@ echo -e "${YELLOW}→${NC} Configuring Claude Code..."
 
 mkdir -p "$HOME/.claude"
 
-# Create or update settings.json
-if [ -f "$SETTINGS_FILE" ]; then
+# Create or update mcp.json
+if [ -f "$MCP_FILE" ]; then
     # Check if jq is available for JSON manipulation
     if command -v jq &> /dev/null; then
         # Use jq to merge settings
         TEMP_FILE=$(mktemp)
-        jq --arg dir "$INSTALL_DIR" --arg key "$API_KEY" '
+        jq --arg node "$NODE_PATH" --arg dir "$INSTALL_DIR" --arg key "$API_KEY" '
             .mcpServers.xai = {
-                "command": "node",
+                "command": $node,
                 "args": [($dir + "/dist/index.js")],
                 "env": {
                     "XAI_API_KEY": $key
                 }
             }
-        ' "$SETTINGS_FILE" > "$TEMP_FILE" && mv "$TEMP_FILE" "$SETTINGS_FILE"
-        echo -e "${GREEN}✓${NC} Updated existing settings.json"
+        ' "$MCP_FILE" > "$TEMP_FILE" && mv "$TEMP_FILE" "$MCP_FILE"
+        echo -e "${GREEN}✓${NC} Updated existing mcp.json"
     else
-        echo -e "${YELLOW}⚠${NC}  Cannot auto-update settings.json (jq not installed)"
+        echo -e "${YELLOW}⚠${NC}  Cannot auto-update mcp.json (jq not installed)"
         echo "   Please manually add the xai server configuration."
     fi
 else
-    # Create new settings file
-    cat > "$SETTINGS_FILE" << EOF
+    # Create new mcp.json file
+    cat > "$MCP_FILE" << EOF
 {
   "mcpServers": {
     "xai": {
-      "command": "node",
+      "command": "$NODE_PATH",
       "args": ["$INSTALL_DIR/dist/index.js"],
       "env": {
         "XAI_API_KEY": "$API_KEY"
@@ -117,7 +119,7 @@ else
   }
 }
 EOF
-    echo -e "${GREEN}✓${NC} Created settings.json"
+    echo -e "${GREEN}✓${NC} Created mcp.json"
 fi
 
 # Done
@@ -127,14 +129,15 @@ echo -e "${GREEN}║      Installation Complete!           ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════╝${NC}"
 echo ""
 echo "Installed to: $INSTALL_DIR"
-echo "Settings:     $SETTINGS_FILE"
+echo "MCP config:   $MCP_FILE"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo "1. Restart Claude Code"
-echo "2. Try: \"Generate an image of a sunset over mountains\""
+echo "2. Run /mcp to verify the xai server is connected"
+echo "3. Try: \"Generate an image of a sunset over mountains\""
 echo ""
 
 if [ "$API_KEY" = "xai-your-api-key-here" ]; then
-    echo -e "${YELLOW}Remember to add your API key to ~/.claude/settings.json${NC}"
+    echo -e "${YELLOW}Remember to add your API key to ~/.claude/mcp.json${NC}"
     echo ""
 fi
