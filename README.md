@@ -63,55 +63,27 @@ npm install
 
 > **Note:** If you used the Quick Install (Option 1), this is already done for you.
 
-Add the MCP server to your Claude Code MCP config file:
+Add the MCP server using the Claude CLI:
 
-**Location:** `~/.claude/mcp.json`
-
-**Using npx (no install needed):**
-
-```json
-{
-  "mcpServers": {
-    "xai": {
-      "command": "npx",
-      "args": ["-y", "github:joemccann/xai-mcp-server"],
-      "env": {
-        "XAI_API_KEY": "xai-your-api-key-here"
-      }
-    }
-  }
-}
+```bash
+claude mcp add xai -e XAI_API_KEY=xai-your-key-here -- node ~/.xai-mcp-server/dist/index.js
 ```
 
-**If installed via npm:**
+**For nvm users**, use the absolute path to node:
 
-```json
-{
-  "mcpServers": {
-    "xai": {
-      "command": "xai-mcp-server",
-      "env": {
-        "XAI_API_KEY": "xai-your-api-key-here"
-      }
-    }
-  }
-}
+```bash
+claude mcp add xai -e XAI_API_KEY=xai-your-key-here -- $(which node) ~/.xai-mcp-server/dist/index.js
 ```
 
-**If cloned/installed locally:**
+Verify it's configured:
 
-```json
-{
-  "mcpServers": {
-    "xai": {
-      "command": "node",
-      "args": ["~/.xai-mcp-server/dist/index.js"],
-      "env": {
-        "XAI_API_KEY": "xai-your-api-key-here"
-      }
-    }
-  }
-}
+```bash
+claude mcp list
+```
+
+You should see:
+```
+xai: ... - ✓ Connected
 ```
 
 ### Step 3: Restart Claude Code
@@ -295,21 +267,20 @@ xai-mcp-server/
 
 ### "XAI_API_KEY environment variable is required"
 
-Ensure your `~/.claude/mcp.json` includes the `env` block with your API key:
+Re-add the MCP server with your API key:
 
-```json
-"env": {
-  "XAI_API_KEY": "xai-your-key-here"
-}
+```bash
+claude mcp remove xai
+claude mcp add xai -e XAI_API_KEY=xai-your-key-here -- $(which node) ~/.xai-mcp-server/dist/index.js
 ```
 
 ### Tools not appearing in Claude Code
 
-1. Run `/mcp` in Claude Code to check server status
-2. Verify the path in `args` is absolute (use `which node` to get full node path)
-3. Ensure the project is built (`npm run build`)
-4. Restart Claude Code completely
-5. Check that `~/.claude/mcp.json` exists and has correct syntax
+1. Run `claude mcp list` to check server status
+2. If not listed, add it with `claude mcp add` (see Step 2 above)
+3. For nvm users, use absolute node path: `$(which node)`
+4. Ensure the project is built (`npm run build`)
+5. Restart Claude Code completely
 
 ### API errors
 
