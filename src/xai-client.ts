@@ -294,7 +294,18 @@ export function getXAIClient(): XAIClient {
   if (!clientInstance) {
     const apiKey = process.env.XAI_API_KEY;
     if (!apiKey) {
-      throw new Error("XAI_API_KEY environment variable is required");
+      throw new Error(
+        "XAI_API_KEY is not configured.\n\n" +
+        "To fix this, add your xAI API key to ~/.claude/mcp.json:\n\n" +
+        '  "xai": {\n' +
+        '    "command": "xai-mcp-server",\n' +
+        '    "env": {\n' +
+        '      "XAI_API_KEY": "your-api-key-here"\n' +
+        "    }\n" +
+        "  }\n\n" +
+        "Get your API key at: https://console.x.ai/\n" +
+        "Then restart Claude Code."
+      );
     }
     clientInstance = new XAIClient({ apiKey });
   }

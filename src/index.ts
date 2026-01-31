@@ -36,12 +36,6 @@ import {
   GenerateVideoInput,
 } from "./tools/generate-video.js";
 
-// Verify API key is available
-if (!process.env.XAI_API_KEY) {
-  console.error("Error: XAI_API_KEY environment variable is required");
-  process.exit(1);
-}
-
 // Create the MCP server
 const server = new Server(
   {
