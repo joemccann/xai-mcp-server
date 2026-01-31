@@ -122,6 +122,12 @@ EOF
     echo -e "${GREEN}✓${NC} Created mcp.json"
 fi
 
+# Install skill file
+echo -e "${YELLOW}→${NC} Installing xai-grok skill..."
+mkdir -p "$HOME/.claude/skills/xai-grok"
+cp "$INSTALL_DIR/skill/SKILL.md" "$HOME/.claude/skills/xai-grok/SKILL.md"
+echo -e "${GREEN}✓${NC} Skill installed"
+
 # Done
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════╗${NC}"
@@ -130,11 +136,12 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 echo "Installed to: $INSTALL_DIR"
 echo "MCP config:   $MCP_FILE"
+echo "Skill:        ~/.claude/skills/xai-grok/"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo "1. Restart Claude Code"
 echo "2. Run /mcp to verify the xai server is connected"
-echo "3. Try: \"Generate an image of a sunset over mountains\""
+echo "3. Try: \"Using grok imagine, generate a sunset over mountains\""
 echo ""
 
 if [ "$API_KEY" = "xai-your-api-key-here" ]; then
