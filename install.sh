@@ -57,6 +57,14 @@ fi
 echo -e "${YELLOW}→${NC} Installing dependencies..."
 npm install --silent
 
+echo -e "${YELLOW}→${NC} Building TypeScript..."
+npm run build
+
+if [ ! -f "$INSTALL_DIR/dist/index.js" ]; then
+    echo -e "${RED}Error: Build failed. dist/index.js not found.${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}✓${NC} Build complete"
 
 # Get API key

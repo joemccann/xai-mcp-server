@@ -39,7 +39,7 @@ npx github:joemccann/xai-mcp-server
 ### Option 3: npm Global Install
 
 ```bash
-npm install -g xai-mcp-server
+npm install -g @joemccann/xai-mcp-server
 ```
 
 ### Option 4: Clone and Build
@@ -67,7 +67,23 @@ Add the MCP server to your Claude Code settings file:
 
 **Location:** `~/.claude/settings.json`
 
-**Using npx (no install needed):**
+**Using npx from npm (no install needed):**
+
+```json
+{
+  "mcpServers": {
+    "xai": {
+      "command": "npx",
+      "args": ["-y", "@joemccann/xai-mcp-server"],
+      "env": {
+        "XAI_API_KEY": "xai-your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+**Using npx from GitHub:**
 
 ```json
 {
@@ -83,7 +99,7 @@ Add the MCP server to your Claude Code settings file:
 }
 ```
 
-**If installed via npm:**
+**If installed globally via npm:**
 
 ```json
 {
