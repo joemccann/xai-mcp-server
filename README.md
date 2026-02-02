@@ -244,6 +244,34 @@ npm run dev
 npm start
 ```
 
+### Testing
+
+This project includes comprehensive unit tests with pretty table output:
+
+```bash
+# Run unit tests (mocked, no API calls)
+npm run test
+
+# Run tests with detailed output (shows every individual test)
+npm run test:detailed
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run integration tests (requires XAI_API_KEY, makes real API calls)
+npm run test:integration
+```
+
+**Test Output Features:**
+- Color-coded results with status indicators (✓ PASS, ✗ FAIL)
+- Performance metrics showing slowest/fastest test files
+- Summary table with total stats
+- Detailed mode shows individual test durations and suite hierarchy
+- All tests use mocked APIs by default (no cost, no API key needed)
+
 ### Project Structure
 
 ```
