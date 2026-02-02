@@ -1,6 +1,7 @@
 /**
  * generate_image MCP Tool
  * Generate images using xAI's Grok Imagine model
+ * Based on: https://docs.x.ai/docs/guides/image-generation
  */
 
 import { z } from "zod";
@@ -20,12 +21,12 @@ export const generateImageSchema = z.object({
   model: z
     .string()
     .optional()
-    .default("grok-2-image")
-    .describe("Image generation model (default: grok-2-image)"),
+    .default("grok-2-image-1212")
+    .describe("Image generation model (grok-2-image-1212, grok-imagine-image)"),
   aspect_ratio: z
-    .string()
+    .enum(["16:9", "4:3", "1:1", "9:16", "3:4", "3:2", "2:3"])
     .optional()
-    .describe("Aspect ratio (e.g., '16:9', '1:1', '4:3')"),
+    .describe("Aspect ratio for the generated image"),
   response_format: z
     .enum(["url", "b64_json"])
     .optional()
@@ -38,7 +39,8 @@ export type GenerateImageInput = z.infer<typeof generateImageSchema>;
 export const generateImageTool = {
   name: "generate_image",
   description:
-    "Generate images from text descriptions using xAI's Grok Imagine model. Returns image URLs or base64 data.",
+    "Generate images from text descriptions using xAI's Grok Imagine model. " +
+    "Returns image URLs or base64 data. Supports multiple images and various aspect ratios.",
   inputSchema: {
     type: "object" as const,
     properties: {
@@ -53,12 +55,13 @@ export const generateImageTool = {
       },
       model: {
         type: "string",
-        description: "Image generation model (default: grok-2-image)",
-        default: "grok-2-image",
+        description: "Image generation model (grok-2-image-1212, grok-imagine-image)",
+        default: "grok-2-image-1212",
       },
       aspect_ratio: {
         type: "string",
-        description: "Aspect ratio (e.g., '16:9', '1:1', '4:3')",
+        enum: ["16:9", "4:3", "1:1", "9:16", "3:4", "3:2", "2:3"],
+        description: "Aspect ratio for the generated image",
       },
       response_format: {
         type: "string",
@@ -91,7 +94,16 @@ export async function handleGenerateImage(
       base64: img.b64_json?.substring(0, 100) + "...", // Truncate for display
       revised_prompt: img.revised_prompt,
     }));
-    return JSON.stringify({ success: true, images, note: "Base64 data truncated for display" }, null, 2);
+    return JSON.stringify(
+      {
+        success: true,
+        images,
+        count: images.length,
+        note: "Base64 data truncated for display. Full data available in raw response.",
+      },
+      null,
+      2
+    );
   }
 
   const images = response.data.map((img, i) => ({
@@ -100,5 +112,13 @@ export async function handleGenerateImage(
     revised_prompt: img.revised_prompt,
   }));
 
-  return JSON.stringify({ success: true, images }, null, 2);
+  return JSON.stringify(
+    {
+      success: true,
+      images,
+      count: images.length,
+    },
+    null,
+    2
+  );
 }

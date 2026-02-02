@@ -1,6 +1,7 @@
 /**
  * generate_video MCP Tool
- * Generate videos using xAI's video generation capabilities
+ * Generate videos using xAI's Grok Imagine video model
+ * Based on: https://docs.x.ai/docs/guides/video-generations
  */
 
 import { z } from "zod";
@@ -13,27 +14,32 @@ export const generateVideoSchema = z.object({
   model: z
     .string()
     .optional()
-    .default("grok-2-video")
-    .describe("Video generation model"),
-  image: z
+    .default("grok-imagine-video")
+    .describe("Video generation model (grok-imagine-video)"),
+  image_url: z
     .string()
     .optional()
-    .describe("Optional input image URL or base64 to animate"),
-  video: z
+    .describe("Input image URL to animate (for image-to-video generation)"),
+  video_url: z
     .string()
     .optional()
-    .describe("Optional input video URL to edit/extend"),
+    .describe("Input video URL to edit (max 8.7 seconds, must be publicly accessible)"),
   duration: z
     .number()
     .min(1)
     .max(15)
     .optional()
-    .default(5)
-    .describe("Video duration in seconds (1-15)"),
+    .describe("Video duration in seconds (1-15). Note: video editing maintains original duration."),
   aspect_ratio: z
-    .string()
+    .enum(["16:9", "4:3", "1:1", "9:16", "3:4", "3:2", "2:3"])
     .optional()
-    .describe("Aspect ratio (e.g., '16:9', '9:16', '1:1')"),
+    .default("16:9")
+    .describe("Aspect ratio for the generated video"),
+  resolution: z
+    .enum(["720p", "480p"])
+    .optional()
+    .default("720p")
+    .describe("Video resolution"),
   wait_for_completion: z
     .boolean()
     .optional()
@@ -46,26 +52,28 @@ export type GenerateVideoInput = z.infer<typeof generateVideoSchema>;
 export const generateVideoTool = {
   name: "generate_video",
   description:
-    "Generate videos from text descriptions using xAI. Can also animate images or edit existing videos.",
+    "Generate videos from text descriptions using xAI's Grok Imagine. " +
+    "Can also animate images (image-to-video) or edit existing videos. " +
+    "Supports various aspect ratios and resolutions.",
   inputSchema: {
     type: "object" as const,
     properties: {
       prompt: {
         type: "string",
-        description: "Text description of the video to generate",
+        description: "Text description of the video to generate or edit instructions",
       },
       model: {
         type: "string",
-        description: "Video generation model",
-        default: "grok-2-video",
+        description: "Video generation model (grok-imagine-video)",
+        default: "grok-imagine-video",
       },
-      image: {
+      image_url: {
         type: "string",
-        description: "Optional input image URL or base64 to animate",
+        description: "Input image URL to animate (for image-to-video generation)",
       },
-      video: {
+      video_url: {
         type: "string",
-        description: "Optional input video URL to edit/extend",
+        description: "Input video URL to edit (max 8.7 seconds)",
       },
       duration: {
         type: "number",
@@ -74,7 +82,15 @@ export const generateVideoTool = {
       },
       aspect_ratio: {
         type: "string",
-        description: "Aspect ratio (e.g., '16:9', '9:16', '1:1')",
+        enum: ["16:9", "4:3", "1:1", "9:16", "3:4", "3:2", "2:3"],
+        description: "Aspect ratio for the video",
+        default: "16:9",
+      },
+      resolution: {
+        type: "string",
+        enum: ["720p", "480p"],
+        description: "Video resolution",
+        default: "720p",
       },
       wait_for_completion: {
         type: "boolean",
@@ -92,14 +108,30 @@ export async function handleGenerateVideo(
   const client = getXAIClient();
   const validated = generateVideoSchema.parse(input);
 
-  const response = await client.generateVideo({
-    model: validated.model,
-    prompt: validated.prompt,
-    image: validated.image,
-    video: validated.video,
-    duration: validated.duration,
-    aspect_ratio: validated.aspect_ratio,
-  });
+  // Determine if this is a video edit or generation
+  const isEdit = !!validated.video_url;
+
+  let response;
+  if (isEdit) {
+    // Video editing via /videos/edits
+    response = await client.editVideo({
+      model: validated.model,
+      prompt: validated.prompt,
+      video_url: validated.video_url!,
+      aspect_ratio: validated.aspect_ratio,
+      resolution: validated.resolution,
+    });
+  } else {
+    // Video generation via /videos/generations
+    response = await client.generateVideo({
+      model: validated.model,
+      prompt: validated.prompt,
+      image_url: validated.image_url,
+      duration: validated.duration,
+      aspect_ratio: validated.aspect_ratio,
+      resolution: validated.resolution,
+    });
+  }
 
   if (!validated.wait_for_completion) {
     return JSON.stringify(
@@ -107,7 +139,8 @@ export async function handleGenerateVideo(
         success: true,
         status: "pending",
         request_id: response.request_id,
-        message: "Video generation started. Use the request_id to check status.",
+        operation: isEdit ? "video_edit" : "video_generation",
+        message: `Video ${isEdit ? "editing" : "generation"} started. Use the request_id to check status.`,
       },
       null,
       2
@@ -123,6 +156,7 @@ export async function handleGenerateVideo(
         success: false,
         status: "failed",
         error: finalStatus.error || "Video generation failed",
+        request_id: response.request_id,
       },
       null,
       2
@@ -133,8 +167,10 @@ export async function handleGenerateVideo(
     {
       success: true,
       status: "completed",
-      video_url: finalStatus.video_url,
+      video_url: finalStatus.url,
+      duration: finalStatus.duration,
       request_id: response.request_id,
+      operation: isEdit ? "video_edit" : "video_generation",
     },
     null,
     2

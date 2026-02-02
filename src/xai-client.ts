@@ -1,6 +1,7 @@
 /**
  * xAI API Client
  * Typed client for interacting with xAI's Grok APIs
+ * Based on xAI API documentation: https://docs.x.ai/docs/api-reference
  */
 
 const XAI_BASE_URL = "https://api.x.ai/v1";
@@ -12,9 +13,9 @@ export interface XAIConfig {
   baseUrl?: string;
 }
 
-// Chat types
+// Chat types (legacy endpoint)
 export interface ChatMessage {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "developer";
   content: string | ContentPart[];
 }
 
@@ -52,6 +53,75 @@ export interface ChatCompletionResponse {
   };
 }
 
+// Responses API types (for search tools)
+export interface ResponsesMessage {
+  role: "user" | "assistant" | "system" | "developer";
+  content: string | ResponsesContentPart[];
+}
+
+export interface ResponsesContentPart {
+  type: "input_text" | "input_image";
+  text?: string;
+  image_url?: string;
+  detail?: "low" | "high" | "auto";
+}
+
+export interface WebSearchFilters {
+  allowed_domains?: string[];
+  excluded_domains?: string[];
+  enable_image_understanding?: boolean;
+  user_location_country?: string;
+  user_location_city?: string;
+  user_location_region?: string;
+  user_location_timezone?: string;
+}
+
+export interface XSearchFilters {
+  allowed_x_handles?: string[];
+  excluded_x_handles?: string[];
+  from_date?: string;
+  to_date?: string;
+  enable_image_understanding?: boolean;
+  enable_video_understanding?: boolean;
+}
+
+export interface SearchTool {
+  type: "web_search" | "x_search";
+  filters?: WebSearchFilters | XSearchFilters;
+}
+
+export interface ResponsesRequest {
+  model: string;
+  input: ResponsesMessage[];
+  tools?: SearchTool[];
+  store?: boolean;
+  include?: string[];
+}
+
+export interface Citation {
+  url: string;
+  title?: string;
+}
+
+export interface ResponsesResponse {
+  id: string;
+  output: {
+    role: string;
+    content: string;
+  }[];
+  citations?: Citation[];
+  inline_citations?: string;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    reasoning_tokens?: number;
+  };
+  server_side_tool_usage?: {
+    web_search_calls?: number;
+    x_search_calls?: number;
+  };
+}
+
 // Image generation types
 export interface ImageGenerationRequest {
   model: string;
@@ -83,25 +153,48 @@ export interface ImageEditRequest {
 export interface VideoGenerationRequest {
   model: string;
   prompt: string;
-  image?: string;
-  video?: string;
+  image_url?: string;
+  video_url?: string;
   duration?: number;
   aspect_ratio?: string;
+  resolution?: "720p" | "480p";
+}
+
+export interface VideoEditRequest {
+  model: string;
+  prompt: string;
+  video_url: string;
+  aspect_ratio?: string;
+  resolution?: "720p" | "480p";
 }
 
 export interface VideoGenerationResponse {
   request_id: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  video_url?: string;
+}
+
+export interface VideoStatusResponse {
+  url?: string;
+  duration?: number;
+  status?: "pending" | "processing" | "completed" | "failed";
   error?: string;
 }
 
-// Search types (via chat with tools)
+// Search types
 export interface SearchRequest {
   query: string;
-  sources?: ("web" | "news" | "x")[];
-  date_range?: { start: string; end: string };
+  sources?: ("web" | "x")[];
+  web_filters?: WebSearchFilters;
+  x_filters?: XSearchFilters;
   max_results?: number;
+}
+
+export interface SearchResponse {
+  content: string;
+  citations?: Citation[];
+  tool_usage?: {
+    web_search_calls?: number;
+    x_search_calls?: number;
+  };
 }
 
 // Model types
@@ -115,6 +208,67 @@ export interface Model {
 export interface ModelsResponse {
   object: string;
   data: Model[];
+}
+
+// Legacy completions types
+export interface CompletionRequest {
+  model: string;
+  prompt: string | string[];
+  max_tokens?: number;
+  temperature?: number;
+  top_p?: number;
+  n?: number;
+  stream?: boolean;
+  stop?: string | string[];
+  presence_penalty?: number;
+  frequency_penalty?: number;
+  suffix?: string;
+  echo?: boolean;
+}
+
+export interface CompletionResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: {
+    text: string;
+    index: number;
+    finish_reason: string;
+  }[];
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+// Deferred completion types
+export interface DeferredCompletionResponse {
+  id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  result?: ChatCompletionResponse;
+  error?: string;
+}
+
+// Tokenize types
+export interface TokenizeRequest {
+  model: string;
+  text: string;
+}
+
+export interface TokenizeResponse {
+  tokens: number[];
+  count: number;
+}
+
+// API Key types
+export interface ApiKeyInfo {
+  id: string;
+  name?: string;
+  created: number;
+  team_id?: string;
+  permissions?: string[];
 }
 
 // ============ Client ============
@@ -160,7 +314,30 @@ export class XAIClient {
     return this.request<Model>(`/models/${modelId}`);
   }
 
-  // ============ Chat ============
+  async listLanguageModels(): Promise<ModelsResponse> {
+    return this.request<ModelsResponse>("/language-models");
+  }
+
+  async listImageGenerationModels(): Promise<ModelsResponse> {
+    return this.request<ModelsResponse>("/image-generation-models");
+  }
+
+  // ============ API Key ============
+
+  async getApiKeyInfo(): Promise<ApiKeyInfo> {
+    return this.request<ApiKeyInfo>("/api-key");
+  }
+
+  // ============ Tokenization ============
+
+  async tokenizeText(request: TokenizeRequest): Promise<TokenizeResponse> {
+    return this.request<TokenizeResponse>("/tokenize-text", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  // ============ Chat Completions ============
 
   async chatCompletion(
     request: ChatCompletionRequest
@@ -169,6 +346,94 @@ export class XAIClient {
       method: "POST",
       body: JSON.stringify(request),
     });
+  }
+
+  async getDeferredCompletion(
+    requestId: string
+  ): Promise<DeferredCompletionResponse> {
+    return this.request<DeferredCompletionResponse>(
+      `/chat/deferred-completion/${requestId}`
+    );
+  }
+
+  // ============ Legacy Completions ============
+
+  async completion(request: CompletionRequest): Promise<CompletionResponse> {
+    return this.request<CompletionResponse>("/completions", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  // ============ Responses API (for Search Tools) ============
+
+  async createResponse(request: ResponsesRequest): Promise<ResponsesResponse> {
+    return this.request<ResponsesResponse>("/responses", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getResponse(responseId: string): Promise<ResponsesResponse> {
+    return this.request<ResponsesResponse>(`/responses/${responseId}`);
+  }
+
+  async deleteResponse(responseId: string): Promise<{ deleted: boolean }> {
+    return this.request<{ deleted: boolean }>(`/responses/${responseId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // ============ Live Search (via Responses API) ============
+
+  async liveSearch(request: SearchRequest): Promise<SearchResponse> {
+    const tools: SearchTool[] = [];
+    const sources = request.sources || ["web"];
+
+    // Build tools array based on requested sources
+    if (sources.includes("web")) {
+      const webTool: SearchTool = { type: "web_search" };
+      if (request.web_filters) {
+        webTool.filters = request.web_filters;
+      }
+      tools.push(webTool);
+    }
+
+    if (sources.includes("x")) {
+      const xTool: SearchTool = { type: "x_search" };
+      if (request.x_filters) {
+        xTool.filters = request.x_filters;
+      }
+      tools.push(xTool);
+    }
+
+    // Build the request
+    // Note: Server-side tools require grok-4 family models
+    const responsesRequest: ResponsesRequest = {
+      model: "grok-4-0709", // Required for server-side tools
+      input: [
+        {
+          role: "user",
+          content: request.query,
+        },
+      ],
+      tools,
+      store: false, // Don't store search queries
+    };
+
+    const response = await this.createResponse(responsesRequest);
+
+    // Extract content from response
+    const content =
+      response.output
+        ?.map((o) => (typeof o.content === "string" ? o.content : ""))
+        .join("\n") || "No results found";
+
+    return {
+      content,
+      citations: response.citations,
+      tool_usage: response.server_side_tool_usage,
+    };
   }
 
   // ============ Image Generation ============
@@ -200,78 +465,46 @@ export class XAIClient {
     });
   }
 
-  async getVideoStatus(requestId: string): Promise<VideoGenerationResponse> {
-    return this.request<VideoGenerationResponse>(`/videos/${requestId}`);
+  async editVideo(request: VideoEditRequest): Promise<VideoGenerationResponse> {
+    return this.request<VideoGenerationResponse>("/videos/edits", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getVideoStatus(requestId: string): Promise<VideoStatusResponse> {
+    return this.request<VideoStatusResponse>(`/videos/${requestId}`);
   }
 
   async pollVideoCompletion(
     requestId: string,
     maxAttempts = 60,
     intervalMs = 5000
-  ): Promise<VideoGenerationResponse> {
+  ): Promise<VideoStatusResponse> {
     for (let i = 0; i < maxAttempts; i++) {
       const status = await this.getVideoStatus(requestId);
       if (status.status === "completed" || status.status === "failed") {
         return status;
+      }
+      // If we get a url, consider it completed
+      if (status.url) {
+        return { ...status, status: "completed" };
       }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
     throw new Error("Video generation timed out");
   }
 
-  // ============ Live Search (via chat with search tool) ============
-
-  async liveSearch(request: SearchRequest): Promise<string> {
-    // xAI's live search is accessed via chat completions with special model
-    // that has built-in search capabilities
-    const searchPrompt = this.buildSearchPrompt(request);
-
-    const response = await this.chatCompletion({
-      model: "grok-3", // Grok models have live search capability
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful assistant with access to real-time web search. Search the web and provide accurate, up-to-date information with sources.",
-        },
-        {
-          role: "user",
-          content: searchPrompt,
-        },
-      ],
-      temperature: 0.3,
-    });
-
-    return response.choices[0]?.message?.content || "No results found";
-  }
-
-  private buildSearchPrompt(request: SearchRequest): string {
-    let prompt = `Search for: ${request.query}`;
-
-    if (request.sources && request.sources.length > 0) {
-      prompt += `\nFocus on these sources: ${request.sources.join(", ")}`;
-    }
-
-    if (request.date_range) {
-      prompt += `\nDate range: ${request.date_range.start} to ${request.date_range.end}`;
-    }
-
-    if (request.max_results) {
-      prompt += `\nProvide up to ${request.max_results} results`;
-    }
-
-    return prompt;
-  }
-
-  // ============ Vision (via chat with image) ============
+  // ============ Vision (via Chat with Image) ============
 
   async analyzeImage(
     imageUrl: string,
     prompt: string,
+    model: string = "grok-2-vision-1212",
     detail: "low" | "high" | "auto" = "auto"
   ): Promise<string> {
     const response = await this.chatCompletion({
-      model: "grok-2-vision-1212", // Vision-capable model
+      model,
       messages: [
         {
           role: "user",
@@ -296,18 +529,27 @@ export function getXAIClient(): XAIClient {
     if (!apiKey) {
       throw new Error(
         "XAI_API_KEY is not configured.\n\n" +
-        "To fix this, add your xAI API key to ~/.claude/mcp.json:\n\n" +
-        '  "xai": {\n' +
-        '    "command": "xai-mcp-server",\n' +
-        '    "env": {\n' +
-        '      "XAI_API_KEY": "your-api-key-here"\n' +
-        "    }\n" +
-        "  }\n\n" +
-        "Get your API key at: https://console.x.ai/\n" +
-        "Then restart Claude Code."
+          "To fix this, add your xAI API key to ~/.claude/mcp.json:\n\n" +
+          '  "xai": {\n' +
+          '    "command": "xai-mcp-server",\n' +
+          '    "env": {\n' +
+          '      "XAI_API_KEY": "your-api-key-here"\n' +
+          "    }\n" +
+          "  }\n\n" +
+          "Get your API key at: https://console.x.ai/\n" +
+          "Then restart Claude Code."
       );
     }
     clientInstance = new XAIClient({ apiKey });
   }
   return clientInstance;
+}
+
+// Export for testing
+export function resetClientInstance(): void {
+  clientInstance = null;
+}
+
+export function createTestClient(config: XAIConfig): XAIClient {
+  return new XAIClient(config);
 }

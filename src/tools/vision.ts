@@ -1,6 +1,7 @@
 /**
  * analyze_image MCP Tool
  * Analyze images using xAI's vision-capable Grok models
+ * Based on: https://docs.x.ai/docs/guides/chat-completions
  */
 
 import { z } from "zod";
@@ -9,7 +10,7 @@ import { getXAIClient } from "../xai-client.js";
 export const visionSchema = z.object({
   image_url: z
     .string()
-    .describe("URL of the image to analyze (or base64 data URL)"),
+    .describe("URL of the image to analyze (JPEG, PNG, max 20MB) or base64 data URL"),
   prompt: z
     .string()
     .optional()
@@ -19,12 +20,12 @@ export const visionSchema = z.object({
     .enum(["low", "high", "auto"])
     .optional()
     .default("auto")
-    .describe("Image detail level for analysis"),
+    .describe("Image detail level: 'low' (faster, fewer tokens), 'high' (detailed), 'auto' (model decides)"),
   model: z
     .string()
     .optional()
     .default("grok-2-vision-1212")
-    .describe("Vision model to use"),
+    .describe("Vision-capable model (grok-2-vision-1212)"),
 });
 
 export type VisionInput = z.infer<typeof visionSchema>;
@@ -32,13 +33,15 @@ export type VisionInput = z.infer<typeof visionSchema>;
 export const visionTool = {
   name: "analyze_image",
   description:
-    "Analyze images using xAI's vision-capable Grok models. Describe, extract text, or answer questions about images.",
+    "Analyze images using xAI's vision-capable Grok models. " +
+    "Describe images, extract text (OCR), answer questions about visual content, " +
+    "or identify objects and scenes. Supports JPEG and PNG up to 20MB.",
   inputSchema: {
     type: "object" as const,
     properties: {
       image_url: {
         type: "string",
-        description: "URL of the image to analyze (or base64 data URL)",
+        description: "URL of the image to analyze (JPEG, PNG, max 20MB) or base64 data URL",
       },
       prompt: {
         type: "string",
@@ -53,7 +56,7 @@ export const visionTool = {
       },
       model: {
         type: "string",
-        description: "Vision model to use",
+        description: "Vision-capable model (grok-2-vision-1212)",
         default: "grok-2-vision-1212",
       },
     },
@@ -68,6 +71,7 @@ export async function handleVision(input: VisionInput): Promise<string> {
   const analysis = await client.analyzeImage(
     validated.image_url,
     validated.prompt,
+    validated.model,
     validated.detail
   );
 
@@ -77,6 +81,8 @@ export async function handleVision(input: VisionInput): Promise<string> {
       analysis,
       image_url: validated.image_url,
       prompt: validated.prompt,
+      model: validated.model,
+      detail: validated.detail,
     },
     null,
     2

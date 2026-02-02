@@ -1,6 +1,6 @@
 {
   "name": "@joemccann/xai-mcp-server",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "MCP server for xAI Grok APIs - image generation, chat, vision, search, and video",
   "type": "module",
   "main": "dist/index.js",
@@ -15,8 +15,12 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build && npm run test"
   },
   "keywords": [
     "mcp",
@@ -47,7 +51,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@vitest/coverage-v8": "^2.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
