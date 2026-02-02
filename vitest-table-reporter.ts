@@ -3,8 +3,25 @@ import Table from "cli-table3";
 
 export default class TableReporter implements Reporter {
   private showDetails = process.env.VITEST_DETAILED === "true";
+  private testCount = 0;
+
+  onInit() {
+    console.log("\n🚀 Starting integration tests...\n");
+  }
+
+  onTaskUpdate(tasks: Task[]) {
+    tasks.forEach((task) => {
+      if (task.type === "test" && task.result?.state === "pass") {
+        this.testCount++;
+        process.stdout.write(`\r✓ ${this.testCount} tests passed...`);
+      }
+    });
+  }
 
   onFinished(files: File[] = []) {
+    // Clear progress line and add spacing
+    console.log("\n");
+    
     // Main results table
     const table = new Table({
       head: ["Test File", "Tests", "Passed", "Failed", "Skipped", "Duration"],
