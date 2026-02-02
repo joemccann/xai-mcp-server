@@ -6,7 +6,6 @@ set -e
 
 REPO="joemccann/xai-mcp-server"
 INSTALL_DIR="$HOME/.xai-mcp-server"
-SETTINGS_FILE="$HOME/.claude/settings.json"
 
 # Colors
 RED='\033[0;31m'
@@ -34,13 +33,24 @@ if [ "$NODE_VERSION" -lt 18 ]; then
     exit 1
 fi
 
-echo -e "${GREEN}✓${NC} Node.js $(node -v) detected"
+# Get absolute path to node (important for nvm users)
+NODE_PATH=$(which node)
+echo -e "${GREEN}✓${NC} Node.js $(node -v) detected at $NODE_PATH"
 
 # Check for git
 if ! command -v git &> /dev/null; then
     echo -e "${RED}Error: git is not installed.${NC}"
     exit 1
 fi
+
+# Check for claude CLI
+if ! command -v claude &> /dev/null; then
+    echo -e "${RED}Error: Claude Code CLI is not installed.${NC}"
+    echo "Please install Claude Code from: https://claude.ai/download"
+    exit 1
+fi
+
+echo -e "${GREEN}✓${NC} Claude Code CLI detected"
 
 # Clone or update repository
 if [ -d "$INSTALL_DIR" ]; then
@@ -81,52 +91,26 @@ fi
 
 if [ -z "$API_KEY" ]; then
     API_KEY="xai-your-api-key-here"
-    echo -e "${YELLOW}⚠${NC}  Skipped. You'll need to add your API key to ~/.claude/settings.json"
+    echo -e "${YELLOW}⚠${NC}  Skipped. You'll need to add your API key later."
 fi
 
-# Configure Claude Code
+# Configure Claude Code MCP server
 echo ""
-echo -e "${YELLOW}→${NC} Configuring Claude Code..."
+echo -e "${YELLOW}→${NC} Configuring Claude Code MCP server..."
 
-mkdir -p "$HOME/.claude"
+# Remove existing xai server if present
+claude mcp remove xai 2>/dev/null || true
 
-# Create or update settings.json
-if [ -f "$SETTINGS_FILE" ]; then
-    # Check if jq is available for JSON manipulation
-    if command -v jq &> /dev/null; then
-        # Use jq to merge settings
-        TEMP_FILE=$(mktemp)
-        jq --arg dir "$INSTALL_DIR" --arg key "$API_KEY" '
-            .mcpServers.xai = {
-                "command": "node",
-                "args": [($dir + "/dist/index.js")],
-                "env": {
-                    "XAI_API_KEY": $key
-                }
-            }
-        ' "$SETTINGS_FILE" > "$TEMP_FILE" && mv "$TEMP_FILE" "$SETTINGS_FILE"
-        echo -e "${GREEN}✓${NC} Updated existing settings.json"
-    else
-        echo -e "${YELLOW}⚠${NC}  Cannot auto-update settings.json (jq not installed)"
-        echo "   Please manually add the xai server configuration."
-    fi
-else
-    # Create new settings file
-    cat > "$SETTINGS_FILE" << EOF
-{
-  "mcpServers": {
-    "xai": {
-      "command": "node",
-      "args": ["$INSTALL_DIR/dist/index.js"],
-      "env": {
-        "XAI_API_KEY": "$API_KEY"
-      }
-    }
-  }
-}
-EOF
-    echo -e "${GREEN}✓${NC} Created settings.json"
-fi
+# Add the MCP server using the CLI
+claude mcp add xai -e "XAI_API_KEY=$API_KEY" -- "$NODE_PATH" "$INSTALL_DIR/dist/index.js"
+
+echo -e "${GREEN}✓${NC} MCP server configured"
+
+# Install skill file
+echo -e "${YELLOW}→${NC} Installing xai-grok skill..."
+mkdir -p "$HOME/.claude/skills/xai-grok"
+cp "$INSTALL_DIR/skill/SKILL.md" "$HOME/.claude/skills/xai-grok/SKILL.md"
+echo -e "${GREEN}✓${NC} Skill installed"
 
 # Done
 echo ""
@@ -135,14 +119,17 @@ echo -e "${GREEN}║      Installation Complete!           ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════╝${NC}"
 echo ""
 echo "Installed to: $INSTALL_DIR"
-echo "Settings:     $SETTINGS_FILE"
+echo "Skill:        ~/.claude/skills/xai-grok/"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo "1. Restart Claude Code"
-echo "2. Try: \"Generate an image of a sunset over mountains\""
+echo "2. Run: claude mcp list (to verify xai is connected)"
+echo "3. Try: \"Using grok imagine, generate a sunset over mountains\""
 echo ""
 
 if [ "$API_KEY" = "xai-your-api-key-here" ]; then
-    echo -e "${YELLOW}Remember to add your API key to ~/.claude/settings.json${NC}"
+    echo -e "${YELLOW}Remember to update your API key:${NC}"
+    echo "  claude mcp remove xai"
+    echo "  claude mcp add xai -e XAI_API_KEY=your-key -- $NODE_PATH $INSTALL_DIR/dist/index.js"
     echo ""
 fi

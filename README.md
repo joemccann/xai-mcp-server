@@ -63,71 +63,27 @@ npm install
 
 > **Note:** If you used the Quick Install (Option 1), this is already done for you.
 
-Add the MCP server to your Claude Code settings file:
+Add the MCP server using the Claude CLI:
 
-**Location:** `~/.claude/settings.json`
-
-**Using npx from npm (no install needed):**
-
-```json
-{
-  "mcpServers": {
-    "xai": {
-      "command": "npx",
-      "args": ["-y", "@joemccann/xai-mcp-server"],
-      "env": {
-        "XAI_API_KEY": "xai-your-api-key-here"
-      }
-    }
-  }
-}
+```bash
+claude mcp add xai -e XAI_API_KEY=xai-your-key-here -- node ~/.xai-mcp-server/dist/index.js
 ```
 
-**Using npx from GitHub:**
+**For nvm users**, use the absolute path to node:
 
-```json
-{
-  "mcpServers": {
-    "xai": {
-      "command": "npx",
-      "args": ["-y", "github:joemccann/xai-mcp-server"],
-      "env": {
-        "XAI_API_KEY": "xai-your-api-key-here"
-      }
-    }
-  }
-}
+```bash
+claude mcp add xai -e XAI_API_KEY=xai-your-key-here -- $(which node) ~/.xai-mcp-server/dist/index.js
 ```
 
-**If installed globally via npm:**
+Verify it's configured:
 
-```json
-{
-  "mcpServers": {
-    "xai": {
-      "command": "xai-mcp-server",
-      "env": {
-        "XAI_API_KEY": "xai-your-api-key-here"
-      }
-    }
-  }
-}
+```bash
+claude mcp list
 ```
 
-**If cloned/installed locally:**
-
-```json
-{
-  "mcpServers": {
-    "xai": {
-      "command": "node",
-      "args": ["~/.xai-mcp-server/dist/index.js"],
-      "env": {
-        "XAI_API_KEY": "xai-your-api-key-here"
-      }
-    }
-  }
-}
+You should see:
+```
+xai: ... - ✓ Connected
 ```
 
 ### Step 3: Restart Claude Code
@@ -206,7 +162,7 @@ Generate images from text descriptions using Grok Imagine.
 |-----------|------|----------|---------|-------------|
 | `prompt` | string | Yes | - | Text description of the image |
 | `n` | number | No | 1 | Number of images (1-10) |
-| `model` | string | No | `grok-2-image` | Image generation model |
+| `model` | string | No | `grok-2-image-1212` | Image generation model |
 | `aspect_ratio` | string | No | - | Aspect ratio (e.g., "16:9", "1:1", "4:3") |
 | `response_format` | string | No | `url` | Output format: "url" or "b64_json" |
 
@@ -265,7 +221,7 @@ Generate videos from text descriptions.
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `prompt` | string | Yes | - | Video description |
-| `model` | string | No | `grok-2-video` | Video generation model |
+| `model` | string | No | `grok-imagine-video` | Video generation model |
 | `duration` | number | No | 5 | Duration in seconds (1-15) |
 | `image` | string | No | - | Input image URL to animate |
 | `video` | string | No | - | Input video URL to edit |
@@ -311,20 +267,20 @@ xai-mcp-server/
 
 ### "XAI_API_KEY environment variable is required"
 
-Ensure your `~/.claude/settings.json` includes the `env` block with your API key:
+Re-add the MCP server with your API key:
 
-```json
-"env": {
-  "XAI_API_KEY": "xai-your-key-here"
-}
+```bash
+claude mcp remove xai
+claude mcp add xai -e XAI_API_KEY=xai-your-key-here -- $(which node) ~/.xai-mcp-server/dist/index.js
 ```
 
 ### Tools not appearing in Claude Code
 
-1. Verify the path in `args` is absolute and correct
-2. Ensure the project is built (`npm run build`)
-3. Restart Claude Code completely
-4. Check Claude Code logs for MCP connection errors
+1. Run `claude mcp list` to check server status
+2. If not listed, add it with `claude mcp add` (see Step 2 above)
+3. For nvm users, use absolute node path: `$(which node)`
+4. Ensure the project is built (`npm run build`)
+5. Restart Claude Code completely
 
 ### API errors
 
