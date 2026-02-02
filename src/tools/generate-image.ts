@@ -91,7 +91,7 @@ export async function handleGenerateImage(
   if (validated.response_format === "b64_json") {
     const images = response.data.map((img, i) => ({
       index: i + 1,
-      base64: img.b64_json?.substring(0, 100) + "...", // Truncate for display
+      base64: `${img.b64_json?.substring(0, 100) ?? ""}...`, // Truncate for display
       revised_prompt: img.revised_prompt,
     }));
     return JSON.stringify(

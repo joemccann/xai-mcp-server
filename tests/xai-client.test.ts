@@ -860,11 +860,23 @@ describe("XAIClient", () => {
     });
 
     it("should handle 429 rate limit", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        text: () => Promise.resolve("Rate limit exceeded"),
-      });
+      // Mock 3 consecutive 429 errors (retry logic tries 3 times by default)
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          text: () => Promise.resolve("Rate limit exceeded"),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          text: () => Promise.resolve("Rate limit exceeded"),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          text: () => Promise.resolve("Rate limit exceeded"),
+        });
 
       await expect(client.chatCompletion({
         model: "grok-3",
@@ -873,16 +885,57 @@ describe("XAIClient", () => {
     });
 
     it("should handle 500 server error", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        text: () => Promise.resolve("Internal server error"),
-      });
+      // Mock 3 consecutive 500 errors (retry logic tries 3 times by default)
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          text: () => Promise.resolve("Internal server error"),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          text: () => Promise.resolve("Internal server error"),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          text: () => Promise.resolve("Internal server error"),
+        });
 
       await expect(client.generateImage({
         model: "grok-2-image",
         prompt: "test",
       })).rejects.toThrow("xAI API error (500): Internal server error");
+    });
+
+    it("should retry on 429 and succeed on second attempt", async () => {
+      // First call fails with 429, second succeeds
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          text: () => Promise.resolve("Rate limit exceeded"),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            id: "chatcmpl-123",
+            object: "chat.completion",
+            created: 1234567890,
+            model: "grok-3",
+            choices: [{ index: 0, message: { role: "assistant", content: "Success after retry" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 5, completion_tokens: 10, total_tokens: 15 },
+          }),
+        });
+
+      const result = await client.chatCompletion({
+        model: "grok-3",
+        messages: [{ role: "user", content: "Hi" }],
+      });
+
+      expect(result.choices[0].message.content).toBe("Success after retry");
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -284,24 +284,56 @@ export class XAIClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retries = 3
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.apiKey}`,
-        ...options.headers,
-      },
-    });
+    let lastError: Error | null = null;
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`xAI API error (${response.status}): ${error}`);
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+            ...options.headers,
+          },
+        });
+
+        if (!response.ok) {
+          const status = response.status;
+          const error = await response.text();
+
+          // Retry on rate limit (429) or server errors (5xx)
+          if ((status === 429 || status >= 500) && attempt < retries - 1) {
+            const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);
+            await new Promise((resolve) => setTimeout(resolve, backoffMs));
+            lastError = new Error(`xAI API error (${status}): ${error}`);
+            continue;
+          }
+
+          throw new Error(`xAI API error (${status}): ${error}`);
+        }
+
+        return response.json() as Promise<T>;
+      } catch (err) {
+        // Network errors - retry with backoff
+        if (
+          err instanceof TypeError &&
+          err.message.includes("fetch") &&
+          attempt < retries - 1
+        ) {
+          const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+          lastError = err;
+          continue;
+        }
+        throw err;
+      }
     }
 
-    return response.json() as Promise<T>;
+    throw lastError || new Error("Request failed after retries");
   }
 
   // ============ Models ============
